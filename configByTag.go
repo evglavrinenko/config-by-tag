@@ -15,11 +15,15 @@ const (
 	envTagName string = "env"
 	required   string = "required"
 	defValName string = "defVal"
-	defValSep  string = ":"
+	separator  string = ":"
+	minName    string = "min"
+	maxName    string = "max"
 
 	errMsgPointer          string = "Structure must be passed as a pointer"
 	errMsgCanSet           string = "Unmutable structure"
 	errMsgRequired         string = "Required env parameter %s not filled"
+	errMsgMin              string = "The value: %s is less than the min: %v < %v"
+	errMsgMax              string = "The value: %s is greater than the max: %v > %v"
 	infoMsgUnsupportedType string = "Unsupported type: %s, field: %s, env: %s"
 )
 
@@ -67,6 +71,8 @@ type tagField struct {
 	name      string
 	isReqired bool
 	defValue  string
+	min       string
+	max       string
 }
 
 func (tf *tagField) Run() error {
@@ -89,8 +95,19 @@ func (tf *tagField) parse() {
 			tf.isReqired = true
 		}
 		// DefVal
-		if strings.Index(v, defValName+defValSep) == 0 {
-			tf.defValue = v[len(defValName+defValSep):]
+		name := defValName + separator
+		if strings.Index(v, name) == 0 {
+			tf.defValue = v[len(name):]
+		}
+		//Min
+		name = minName + separator
+		if strings.Index(v, name) == 0 {
+			tf.min = v[len(name):]
+		}
+		//Max
+		name = maxName + separator
+		if strings.Index(v, name) == 0 {
+			tf.max = v[len(name):]
 		}
 	}
 }
@@ -165,6 +182,11 @@ func (tf *tagField) stringType() error {
 	if err != nil {
 		return err
 	}
+	// Validation
+	if err = tf.valid(tf.compareString(s)); err != nil {
+		return err
+	}
+
 	tf.value.SetString(s)
 	return nil
 }
@@ -175,6 +197,10 @@ func (tf *tagField) intType() error {
 	}
 	n, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
+		return err
+	}
+	// Validation
+	if err = tf.valid(tf.compareInt64(n)); err != nil {
 		return err
 	}
 	tf.value.SetInt(n)
@@ -189,6 +215,10 @@ func (tf *tagField) uintType() error {
 	if err != nil {
 		return err
 	}
+	// Validation
+	if err = tf.valid(tf.compareUint64(n)); err != nil {
+		return err
+	}
 	tf.value.SetUint(n)
 	return nil
 }
@@ -199,6 +229,10 @@ func (tf *tagField) floatType() error {
 	}
 	n, err := strconv.ParseFloat(s, 64)
 	if err != nil {
+		return err
+	}
+	// Validation
+	if err = tf.valid(tf.compareFloat64(n)); err != nil {
 		return err
 	}
 	tf.value.SetFloat(n)
@@ -216,17 +250,100 @@ func (tf *tagField) boolType() error {
 	tf.value.SetBool(b)
 	return nil
 }
-func (tf *tagField) durationType() error {
-	s, err := tf.getEnv()
-	if err != nil {
+func (tf *tagField) durationType() (err error) {
+	var (
+		s string
+		d time.Duration
+	)
+	if s, err = tf.getEnv(); err != nil {
 		return err
 	}
-	d, err := time.ParseDuration(s)
-	if err != nil {
+	if d, err = time.ParseDuration(s); err != nil {
+		return err
+	}
+	// Validation
+	if err = tf.valid(tf.compareDuration(d)); err != nil {
 		return err
 	}
 	tf.value.SetInt(int64(d))
 	return nil
+}
+
+type TCompareFunc func(isMin bool, field, msg string) error
+
+func (tf *tagField) valid(cf TCompareFunc) error {
+	if tf.min != "" {
+		if err := cf(true, tf.min, errMsgMin); err != nil {
+			return err
+		}
+	}
+	if tf.max != "" {
+		if err := cf(false, tf.max, errMsgMax); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (tf *tagField) compareString(s string) TCompareFunc {
+	return func(isMin bool, field, msg string) error {
+		compValue, err := strconv.Atoi(field)
+		if err != nil {
+			return err
+		}
+		if (len(s) < compValue && isMin) || (len(s) > compValue && !isMin) {
+			return errors.New(fmt.Sprintf(msg, tf.name, field))
+		}
+		return nil
+	}
+}
+func (tf *tagField) compareInt64(n int64) TCompareFunc {
+	return func(isMin bool, field, msg string) error {
+		compValue, err := strconv.ParseInt(field, 10, 64)
+		if err != nil {
+			return err
+		}
+		if (n < compValue && isMin) || (n > compValue && !isMin) {
+			return errors.New(fmt.Sprintf(msg, tf.name, field))
+		}
+		return nil
+	}
+}
+func (tf *tagField) compareUint64(n uint64) TCompareFunc {
+	return func(isMin bool, field, msg string) error {
+		compValue, err := strconv.ParseUint(field, 10, 64)
+		if err != nil {
+			return err
+		}
+		if (n < compValue && isMin) || (n > compValue && !isMin) {
+			return errors.New(fmt.Sprintf(msg, tf.name, field))
+		}
+		return nil
+	}
+}
+func (tf *tagField) compareFloat64(n float64) TCompareFunc {
+	return func(isMin bool, field, msg string) error {
+		compValue, err := strconv.ParseFloat(field, 64)
+		if err != nil {
+			return err
+		}
+		if (n < compValue && isMin) || (n > compValue && !isMin) {
+			return errors.New(fmt.Sprintf(msg, tf.name, n, field))
+		}
+		return nil
+	}
+}
+func (tf *tagField) compareDuration(d time.Duration) TCompareFunc {
+	return func(isMin bool, field, msg string) error {
+		compValue, err := time.ParseDuration(field)
+		if err != nil {
+			return err
+		}
+		if (d < compValue && isMin) || (d > compValue && !isMin) {
+			return errors.New(fmt.Sprintf(msg, tf.name, d, field))
+		}
+		return nil
+	}
 }
 
 type fType func(string) (v reflect.Value, err error)
@@ -237,12 +354,17 @@ func (tf *tagField) sliceType(f fType) error {
 		return err
 	}
 	value := reflect.New(tf.value.Type()).Elem()
-	for _, s := range strings.Split(sEnv, ",") {
+	slice := strings.Split(sEnv, ",")
+	for _, s := range slice {
 		val, err := f(s)
 		if err != nil {
 			return err
 		}
 		value = reflect.Append(value, val)
+	}
+	// Validation
+	if err = tf.valid(tf.compareInt64(int64(len(slice)))); err != nil {
+		return err
 	}
 	tf.value.Set(value)
 	return nil
