@@ -190,10 +190,12 @@ func (tf *tagField) stringType() error {
 	tf.value.SetString(s)
 	return nil
 }
-func (tf *tagField) intType() error {
-	s, err := tf.getEnv()
-	if err != nil {
+func (tf *tagField) intType() (err error) {
+	var s string
+	if s, err = tf.getEnv(); err != nil {
 		return err
+	} else if strings.TrimSpace(s) == "" {
+		return nil
 	}
 	n, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
@@ -206,10 +208,12 @@ func (tf *tagField) intType() error {
 	tf.value.SetInt(n)
 	return nil
 }
-func (tf *tagField) uintType() error {
-	s, err := tf.getEnv()
-	if err != nil {
+func (tf *tagField) uintType() (err error) {
+	var s string
+	if s, err = tf.getEnv(); err != nil {
 		return err
+	} else if strings.TrimSpace(s) == "" {
+		return nil
 	}
 	n, err := strconv.ParseUint(s, 10, 64)
 	if err != nil {
@@ -222,10 +226,12 @@ func (tf *tagField) uintType() error {
 	tf.value.SetUint(n)
 	return nil
 }
-func (tf *tagField) floatType() error {
-	s, err := tf.getEnv()
-	if err != nil {
+func (tf *tagField) floatType() (err error) {
+	var s string
+	if s, err = tf.getEnv(); err != nil {
 		return err
+	} else if strings.TrimSpace(s) == "" {
+		return nil
 	}
 	n, err := strconv.ParseFloat(s, 64)
 	if err != nil {
@@ -238,10 +244,12 @@ func (tf *tagField) floatType() error {
 	tf.value.SetFloat(n)
 	return nil
 }
-func (tf *tagField) boolType() error {
-	s, err := tf.getEnv()
-	if err != nil {
+func (tf *tagField) boolType() (err error) {
+	var s string
+	if s, err = tf.getEnv(); err != nil {
 		return err
+	} else if strings.TrimSpace(s) == "" {
+		return nil
 	}
 	b, err := strconv.ParseBool(s)
 	if err != nil {
@@ -257,6 +265,8 @@ func (tf *tagField) durationType() (err error) {
 	)
 	if s, err = tf.getEnv(); err != nil {
 		return err
+	} else if strings.TrimSpace(s) == "" {
+		return nil
 	}
 	if d, err = time.ParseDuration(s); err != nil {
 		return err
