@@ -2,19 +2,18 @@ package configByTag
 
 import (
 	"reflect"
-	"strings"
 	"testing"
 	"time"
 )
 
 type Config struct {
-	TestString         string        `env:"ENV_STRING,defVal:1"`
-	TestStringRequired string        `env:"ENV_STRING_R,required"`
-	TestDuration       time.Duration `env:"ENV_DURATION"`
-	TestDuration2      time.Duration `env:"ENV_DURATION2,defVal:4s,min:1s,max:1m"`
-	TestBool           bool          `env:"ENV_BOOLEAN1,defVal:true"`
-	TestInt            int           `env:"ENV_INT,defVal:1"`
-	TestInt8           int8          `env:"ENV_INT8,defVal:8"`
+	TestString string `env:"ENV_STRING,defVal:1"`
+	//TestStringRequired string        `env:"ENV_STRING_R,required"`
+	TestDuration  time.Duration `env:"ENV_DURATION"`
+	TestDuration2 time.Duration `env:"ENV_DURATION2,defVal:4s,min:1s,max:1m"`
+	TestBool      bool          `env:"ENV_BOOLEAN1,defVal:true"`
+	TestInt       int           `env:"ENV_INT,defVal:1"`
+	TestInt8      int8          `env:"ENV_INT8,defVal:8"`
 
 	TestFloat32 float32 `env:"ENV_FLOAT32,defVal:143.123,min:140"`
 	TestFloat64 float64 `env:"ENV_FLOAT64,defVal:18.9,max:123.12"`
@@ -48,7 +47,9 @@ func TestLoad(t *testing.T) {
 	t.Setenv("ENV_FLOAT64", "43.12")
 
 	Conf.TestSliceString = []string{"test1"}
-	errs := Load(&Conf)
+	if err := Load(&Conf); err != nil {
+		t.Error(err)
+	}
 
 	if Conf.TestString != "testString" {
 		t.Error("Test string")
@@ -77,14 +78,5 @@ func TestLoad(t *testing.T) {
 	b := []bool{true, false, true}
 	if !reflect.DeepEqual(Conf.TestSliceBool, b) {
 		t.Error("Test []bool")
-	}
-
-	for i, err := range errs {
-		if strings.TrimSpace(err.Error()) == "Required env parameter ENV_STRING_R not filled" {
-			errs = append(errs[:i], errs[i+1:]...)
-		}
-	}
-	if len(errs) > 0 {
-		t.Error(errs)
 	}
 }

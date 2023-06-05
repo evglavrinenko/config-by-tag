@@ -27,34 +27,34 @@ const (
 	infoMsgUnsupportedType string = "Unsupported type: %s, field: %s, env: %s"
 )
 
-func Load(c interface{}) []error {
+func Load(c interface{}) error {
 	p := reflect.ValueOf(c)
 	if p.Type().Kind() != reflect.Ptr {
 		log.Fatal(errMsgPointer)
 	}
 	v := p.Elem()
 	if !v.CanSet() {
-		return []error{errors.New(errMsgCanSet)}
+		return errors.New(errMsgCanSet)
 	}
 	return parseField(v)
 }
 
-func parseField(v reflect.Value) (errs []error) {
+func parseField(v reflect.Value) (err error) {
 	t := v.Type()
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
 		fieldValue := v.Field(i)
 		if f.Type.Kind() == reflect.Struct {
-			if err := parseField(fieldValue); err != nil {
-				errs = append(errs, err...)
+			if err = parseField(fieldValue); err != nil {
+				return err
 			}
 		} else {
-			if err := runTagField(f, &fieldValue); err != nil {
-				errs = append(errs, err)
+			if err = runTagField(f, &fieldValue); err != nil {
+				return err
 			}
 		}
 	}
-	return errs
+	return nil
 }
 
 func runTagField(field reflect.StructField, value *reflect.Value) error {
