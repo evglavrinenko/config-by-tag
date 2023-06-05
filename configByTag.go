@@ -1,6 +1,5 @@
-package configTag
+package configByTag
 
-import "C"
 import (
 	"errors"
 	"fmt"
@@ -96,10 +95,44 @@ func (tf *tagField) parse() {
 	}
 }
 func (tf *tagField) set() error {
-	kind := tf.field.Type.Kind()
-	if tf.field.Type.String() == "time.Duration" {
+	switch tf.field.Type {
+	// time.Duration
+	case reflect.TypeOf(time.Duration(1)):
 		return tf.durationType()
+	// []string
+	case reflect.TypeOf([]string{}):
+		return tf.sliceType(tf.stringSlice)
+
+	// []int
+	case reflect.TypeOf([]int{}):
+		return tf.sliceType(tf.intSlice(0))
+	case reflect.TypeOf([]int8{}):
+		return tf.sliceType(tf.intSlice(8))
+	case reflect.TypeOf([]int16{}):
+		return tf.sliceType(tf.intSlice(16))
+	case reflect.TypeOf([]int32{}):
+		return tf.sliceType(tf.intSlice(32))
+	case reflect.TypeOf([]int32{}):
+		return tf.sliceType(tf.intSlice(64))
+
+	// []uint
+	case reflect.TypeOf([]uint{}):
+		return tf.sliceType(tf.uintSlice(0))
+	case reflect.TypeOf([]uint8{}):
+		return tf.sliceType(tf.uintSlice(8))
+	case reflect.TypeOf([]uint16{}):
+		return tf.sliceType(tf.uintSlice(16))
+	case reflect.TypeOf([]uint32{}):
+		return tf.sliceType(tf.uintSlice(32))
+	case reflect.TypeOf([]uint32{}):
+		return tf.sliceType(tf.uintSlice(64))
+
+	// []bool
+	case reflect.TypeOf([]bool{}):
+		return tf.sliceType(tf.boolSlice)
 	}
+
+	kind := tf.field.Type.Kind()
 	switch kind {
 	case reflect.String:
 		return tf.stringType()
@@ -194,4 +227,76 @@ func (tf *tagField) durationType() error {
 	}
 	tf.value.SetInt(int64(d))
 	return nil
+}
+
+type fType func(string) (v reflect.Value, err error)
+
+func (tf *tagField) sliceType(f fType) error {
+	sEnv, err := tf.getEnv()
+	if err != nil {
+		return err
+	}
+	value := reflect.New(tf.value.Type()).Elem()
+	for _, s := range strings.Split(sEnv, ",") {
+		val, err := f(s)
+		if err != nil {
+			return err
+		}
+		value = reflect.Append(value, val)
+	}
+	tf.value.Set(value)
+	return nil
+
+}
+func (tf *tagField) stringSlice(s string) (v reflect.Value, err error) {
+	return reflect.ValueOf(s), nil
+}
+func (tf *tagField) intSlice(bitSize int) fType {
+	return func(s string) (v reflect.Value, err error) {
+		var n int64
+		if n, err = strconv.ParseInt(s, 10, bitSize); err != nil {
+			return v, err
+		}
+		switch bitSize {
+		case 0:
+			v = reflect.ValueOf(int(n))
+		case 8:
+			v = reflect.ValueOf(int8(n))
+		case 16:
+			v = reflect.ValueOf(int16(n))
+		case 32:
+			v = reflect.ValueOf(int32(n))
+		case 64:
+			v = reflect.ValueOf(int64(n))
+		}
+		return v, nil
+	}
+}
+func (tf *tagField) uintSlice(bitSize int) fType {
+	return func(s string) (v reflect.Value, err error) {
+		var n uint64
+		if n, err = strconv.ParseUint(s, 10, bitSize); err != nil {
+			return v, err
+		}
+		switch bitSize {
+		case 0:
+			v = reflect.ValueOf(uint(n))
+		case 8:
+			v = reflect.ValueOf(uint8(n))
+		case 16:
+			v = reflect.ValueOf(uint16(n))
+		case 32:
+			v = reflect.ValueOf(uint32(n))
+		case 64:
+			v = reflect.ValueOf(uint64(n))
+		}
+		return v, nil
+	}
+}
+func (tf *tagField) boolSlice(s string) (v reflect.Value, err error) {
+	var b bool
+	if b, err = strconv.ParseBool(s); err != nil {
+		return v, err
+	}
+	return reflect.ValueOf(b), nil
 }

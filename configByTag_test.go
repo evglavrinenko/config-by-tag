@@ -1,6 +1,7 @@
-package configTag
+package configByTag
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -14,15 +15,16 @@ type Config struct {
 	TestBool           bool          `env:"ENV_BOOLEAN1,defVal:true"`
 	TestInt            int           `env:"ENV_INT,defVal:1"`
 	TestInt8           int8          `env:"ENV_INT8,defVal:8"`
-
-	Block struct {
+	Block              struct {
 		TestUint   uint  `env:"ENV_UINT,defVal:2"`
 		TestUint16 uint8 `env:"ENV_UINT16,defVal:16"`
 		SubBlock   struct {
 			TestSubUint uint `env:"ENT_UINT_SUB,defVal:9"`
 		}
 	}
-	TestUnsupport []string `env:"ENV_UNSUPPORT"`
+	TestSliceString []string `env:"ENV_SLICE_STRING"`
+	TestSliceInt    []uint8  `env:"ENV_SLICE_INT"`
+	TestSliceBool   []bool   `env:"ENV_SLICE_BOOL"`
 }
 
 func TestLoad(t *testing.T) {
@@ -35,9 +37,12 @@ func TestLoad(t *testing.T) {
 	t.Setenv("ENV_INT8", "7")
 	t.Setenv("ENV_INT8", "7")
 	t.Setenv("ENV_UINT", "2")
+	t.Setenv("ENV_SLICE_STRING", "stroka1,stroka2")
+	t.Setenv("ENV_SLICE_INT", "5,6,7")
+	t.Setenv("ENV_SLICE_BOOL", "true,false,true")
 
+	Conf.TestSliceString = []string{"test1"}
 	errs := Load(&Conf)
-	//t.Log(Conf)
 
 	if Conf.TestString != "testString" {
 		t.Error("Test string")
@@ -53,17 +58,28 @@ func TestLoad(t *testing.T) {
 		t.Error("Test bool")
 	}
 
+	s := []string{"stroka1", "stroka2"}
+	if !reflect.DeepEqual(Conf.TestSliceString, s) {
+		t.Error("Test []string")
+	}
+
+	n := []uint8{5, 6, 7}
+	if !reflect.DeepEqual(Conf.TestSliceInt, n) {
+		t.Error("Test []uint8")
+	}
+
+	b := []bool{true, false, true}
+	if !reflect.DeepEqual(Conf.TestSliceBool, b) {
+		t.Error("Test []bool")
+	}
+
 	ok := 0
 	for _, err := range errs {
 		if strings.TrimSpace(err.Error()) == "Required env parameter ENV_STRING_R not filled" {
 			ok++
 		}
-		if strings.TrimSpace(err.Error()) == "Unsupported type: slice, field: TestUnsupport, env: ENV_UNSUPPORT" {
-			ok++
-		}
 	}
-
-	if ok != 2 {
+	if ok != 1 {
 		t.Error(errs)
 	}
 }
