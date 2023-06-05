@@ -1,3 +1,3 @@
-module github.com/evglavrinenko/config-by-tag/v1
+module github.com/evglavrinenko/config-by-tag
 
 go 1.17
