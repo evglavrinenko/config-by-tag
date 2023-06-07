@@ -7,6 +7,12 @@ import (
 )
 
 type Config struct {
+	testUnEnv string
+	//template  struct {
+	//	back       string
+	//	backStatic string
+	//	storage    string
+	//}
 	TestString string `env:"ENV_STRING,defVal:1"`
 	//TestStringRequired string        `env:"ENV_STRING_R,required"`
 	TestDuration  time.Duration `env:"ENV_DURATION"`
