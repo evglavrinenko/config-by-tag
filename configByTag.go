@@ -36,6 +36,7 @@ func Load(c interface{}) error {
 	if !v.CanSet() {
 		return errors.New(errMsgCanSet)
 	}
+
 	return parseField(v)
 }
 
@@ -49,8 +50,10 @@ func parseField(v reflect.Value) (err error) {
 				return err
 			}
 		} else {
-			if err = runTagField(f, &fieldValue); err != nil {
-				return err
+			if fieldValue.CanSet() {
+				if err = runTagField(f, &fieldValue); err != nil {
+					return err
+				}
 			}
 		}
 	}
