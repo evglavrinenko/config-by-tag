@@ -41,7 +41,8 @@ func TestLoad(t *testing.T) {
 
 	t.Setenv("ENV_STRING", "testString")
 	//t.Setenv("ENV_STRING_R", "testStringRequired")
-	t.Setenv("ENV_DURATION", (3 * time.Second).String())
+	//t.Setenv("ENV_DURATION", (3 * time.Second).String())
+	t.Setenv("ENV_DURATION", "3")
 	t.Setenv("ENV_BOOLEAN", "true")
 	t.Setenv("ENV_INT8", "7")
 	t.Setenv("ENV_UINT", "2")

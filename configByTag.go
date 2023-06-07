@@ -271,6 +271,7 @@ func (tf *tagField) durationType() (err error) {
 	} else if strings.TrimSpace(s) == "" {
 		return nil
 	}
+	s = StrIntAsSecond(s)
 	if d, err = time.ParseDuration(s); err != nil {
 		return err
 	}
